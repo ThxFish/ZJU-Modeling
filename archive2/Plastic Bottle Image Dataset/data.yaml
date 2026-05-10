@@ -1,0 +1,6 @@
+train: /kaggle/input/plastic-bottles-image-dataset/Plastic Bottle Image Dataset/train/images
+val: /kaggle/input/plastic-bottles-image-dataset/Plastic Bottle Image Dataset/valid/images
+test: /kaggle/input/plastic-bottles-image-dataset/Plastic Bottle Image Dataset/test/images
+
+nc: 1
+names: ['bottle']

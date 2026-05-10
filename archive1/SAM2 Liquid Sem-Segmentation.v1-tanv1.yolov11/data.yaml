@@ -1,0 +1,13 @@
+train: ../train/images
+val: ../valid/images
+test: ../test/images
+
+nc: 3
+names: ['container', 'fluid', 'fluid-surface']
+
+roboflow:
+  workspace: tan-b1re6
+  project: sam2-liquid-sem-segmentation-bpmm3
+  version: 1
+  license: CC BY 4.0
+  url: https://universe.roboflow.com/tan-b1re6/sam2-liquid-sem-segmentation-bpmm3/dataset/1
