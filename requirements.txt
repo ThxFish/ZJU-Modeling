@@ -7,5 +7,3 @@ matplotlib
 pandas
 jupyter
 tqdm
-labelImg
-pyqt5
