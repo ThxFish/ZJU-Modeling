@@ -1,0 +1,33 @@
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.env
+venv/
+.venv/
+
+# PyTorch
+*.pth
+*.pt
+*.ckpt
+
+# YOLO / Runs
+runs/
+yolov8n.pt
+yolov11n.pt
+
+# LaTeX
+*.aux
+*.bbl
+*.blg
+*.log
+*.out
+*.toc
+*.fls
+*.fdb_latexmk
+*.synctex.gz
+*.pdf
+
+# Dataset (Ignore large files if avoiding git upload, can be commented based on needs)
+# dataset/
