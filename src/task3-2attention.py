@@ -72,7 +72,7 @@ def train_full_detection():
         data='dataset/data.yaml',
         epochs=40, 
         imgsz=640,
-        batch=16,
+        batch=32,
         device=device_id,
         single_cls=False,  # 保留 4 分类
         project='runs/task3-2', 
@@ -80,6 +80,9 @@ def train_full_detection():
     )
     
     print("Task 3-2 训练结束。最佳产出模型通常保存在 runs/task3-2/bottle_liquids_analysis/weights/best.pt。")
+    print("✅ 为了方便数学建模写论文，YOLO 已自动输出评估指标：")
+    print("  - 请前往 runs/task3-2/bottle_liquids_analysis/ 提取您的多分类混淆矩阵 (confusion_matrix.png)")
+    print("  - 各类别的 F1 分数与 P-R 验证曲线 (F1_curve.png, PR_curve.png) ")
     print("--------------------------------------------------")
     
     # ======== 新增：端到端推理测试可视化 ========

@@ -1,8 +1,8 @@
 
-ZJU-Modeling - v3 20260514v2
+Plastic Bottle with Different Liquid Level - v1 20260515v1
 ==============================
 
-This dataset was exported via roboflow.com on May 14, 2026 at 6:09 AM GMT
+This dataset was exported via roboflow.com on May 15, 2026 at 1:36 PM GMT
 
 Roboflow is an end-to-end computer vision platform that helps you
 * collaborate with your team on computer vision projects
@@ -17,7 +17,7 @@ visit https://github.com/roboflow/notebooks
 
 To find over 100k other datasets and pre-trained models, visit https://universe.roboflow.com
 
-The dataset includes 1121 images.
+The dataset includes 1292 images.
 ZJU-Modeling are annotated in YOLOv8 format.
 
 The following pre-processing was applied to each image:

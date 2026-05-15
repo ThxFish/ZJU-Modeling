@@ -83,6 +83,10 @@ def train_localization():
     )
     
     print("Task 3-1 训练结束。模型已经掌握在你特有数据集背景下寻找瓶体的能力。")
+    print("✅ YOLO 已自动为您在 runs/task3-1/bottle_localization 下生成了：")
+    print("  - 混淆矩阵 (confusion_matrix.png)")
+    print("  - 包含 F1-Score 的 P-R 曲线 (PR_curve.png)")
+    print("  - 这些学术图表可以直接放入数学建模论文中！")
     print("--------------------------------------------------")
     
     # ======== 新增：训练后进行自动可视化测试 ========

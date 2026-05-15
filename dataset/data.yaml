@@ -1,13 +1,13 @@
-train: train/images
-val: valid/images
-test: test/images
+train: ../train/images
+val: ../valid/images
+test: ../test/images
 
 nc: 4
-names: ["empty", "high", "low", "medium"]
+names: ['empty', 'high', 'low', 'medium']
 
 roboflow:
-  workspace: zhengyus-workspace
-  project: zju-modeling
-  version: 3
+  workspace: zhengyus-workspace-g254e
+  project: plastic-bottle-with-different-liquid-level-lguwp
+  version: 1
   license: CC BY 4.0
-  url: https://universe.roboflow.com/zhengyus-workspace/zju-modeling/dataset/3
+  url: https://universe.roboflow.com/zhengyus-workspace-g254e/plastic-bottle-with-different-liquid-level-lguwp/dataset/1

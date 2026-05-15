@@ -1,5 +1,5 @@
-# ZJU-Modeling > 20260514v2
-https://universe.roboflow.com/zhengyus-workspace/zju-modeling
+# Plastic Bottle with Different Liquid Level > 20260515v1
+https://universe.roboflow.com/zhengyus-workspace-g254e/plastic-bottle-with-different-liquid-level-lguwp
 
 Provided by a Roboflow user
 License: CC BY 4.0

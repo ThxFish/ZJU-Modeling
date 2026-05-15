@@ -3,12 +3,15 @@ import cv2
 import glob
 import torch
 import torch.nn as nn
+import torch.nn.functional as F
 import torch.optim as optim
 from torch.utils.data import Dataset, DataLoader
 from torchvision import models, transforms
 from PIL import Image
 import matplotlib.pyplot as plt
 import numpy as np
+import seaborn as sns
+from sklearn.metrics import classification_report, confusion_matrix, roc_curve, auc
 
 class YoloCropBinaryDataset(Dataset):
     """
@@ -149,6 +152,42 @@ class ResNet18WithAttention(nn.Module):
         x = self.fc(x)
         return x
 
+class GradCAM:
+    """[论文用] 轻量级纯 PyTorch 手写 Grad-CAM 实现用于获取特征热力图"""
+    def __init__(self, model, target_layer):
+        self.model = model
+        self.target_layer = target_layer
+        self.gradients = None
+        self.activations = None
+        # 注册向前与向后传播钩子 (Hook)，截取流经特征层的数据
+        target_layer.register_forward_hook(self.save_activation)
+        target_layer.register_full_backward_hook(self.save_gradient)
+
+    def save_activation(self, module, input, output):
+        self.activations = output
+
+    def save_gradient(self, module, grad_input, grad_output):
+        self.gradients = grad_output[0]
+
+    def generate(self, input_image, target_class=None):
+        self.model.zero_grad()
+        output = self.model(input_image)
+        if target_class is None:
+            target_class = output.argmax(dim=1).item()
+        
+        loss = output[0, target_class]
+        loss.backward()
+        
+        # 全局平均池化梯度，获得各个特征通道对预测结果的“权重”
+        weights = torch.mean(self.gradients, dim=[2, 3], keepdim=True)
+        # 将权重叠加到对应的特征热力图上
+        cam = torch.sum(weights * self.activations, dim=1).squeeze()
+        # ReLU 激活函数过滤掉负面干扰像素
+        cam = F.relu(cam)
+        cam = cam - cam.min()
+        cam = cam / (cam.max() + 1e-8)
+        return cam.cpu().detach().numpy()
+
 def build_binary_classifier():
     # 替换为带 CBAM 双重注意力机制的网络
     return ResNet18WithAttention()
@@ -156,11 +195,20 @@ def build_binary_classifier():
 def main():
     print("====== 正在准备执行 Task 2: 瓶体是否有液体 (二分类) 训练 ======")
     
-    transform = transforms.Compose([
+    # 训练集特有：包含数据增强（旋转、变色、翻转）以提升泛化能力
+    train_transform = transforms.Compose([
         transforms.Resize((224, 224)),
         transforms.RandomHorizontalFlip(p=0.5),
         transforms.ColorJitter(brightness=0.2, contrast=0.2, saturation=0.2),
         transforms.RandomRotation(degrees=15),
+        transforms.ToTensor(),
+        transforms.Normalize(mean=[0.485, 0.456, 0.406],
+                             std=[0.229, 0.224, 0.225])
+    ])
+    
+    # 验证/测试集特有：绝对不能包含随机增强，必须原图直出（仅做缩放和归一化）
+    val_transform = transforms.Compose([
+        transforms.Resize((224, 224)),
         transforms.ToTensor(),
         transforms.Normalize(mean=[0.485, 0.456, 0.406],
                              std=[0.229, 0.224, 0.225])
@@ -171,8 +219,8 @@ def main():
     val_img_dir = 'dataset/valid/images'
     val_lbl_dir = 'dataset/valid/labels'
     
-    train_dataset = YoloCropBinaryDataset(train_img_dir, train_lbl_dir, transform=transform)
-    val_dataset = YoloCropBinaryDataset(val_img_dir, val_lbl_dir, transform=transform)
+    train_dataset = YoloCropBinaryDataset(train_img_dir, train_lbl_dir, transform=train_transform)
+    val_dataset = YoloCropBinaryDataset(val_img_dir, val_lbl_dir, transform=val_transform)
     print(f"提取完成 - 训练集包含 {len(train_dataset)} 个瓶子截图，验证集包含 {len(val_dataset)} 个。")
     
     train_loader = DataLoader(train_dataset, batch_size=32, shuffle=True)
@@ -232,37 +280,120 @@ def main():
     torch.save(model.state_dict(), save_path)
     print(f"训练完成！包含本地数据学习特征的权重已保存至: {save_path}")
     
-    # ======== 新增：训练后对若干验证集图片进行可视化预测 ========
-    print("\n>>> 开始可视化本次 Task 2 模型的预测结果...")
+    # ======== 1. 验证集全面综合评价：分类报告、混淆矩阵、ROC/AUC ========
+    print("\n>>> 开始在验证集上计算评价指标 (Confusion Matrix, ROC Curve, AUC)...")
     model.eval()
+    all_labels, all_preds, all_probs = [], [], []
+    
+    with torch.no_grad():
+        for v_inputs, v_labels in val_loader:
+            v_inputs = v_inputs.to(device)
+            v_outputs = model(v_inputs)
+            # 通过 Softmax 提取分类置信度用来给截距 ROC/AUC 定锚
+            probs = F.softmax(v_outputs, dim=1)[:, 1] 
+            _, v_pred = torch.max(v_outputs, 1)
+            
+            all_labels.extend(v_labels.numpy())
+            all_preds.extend(v_pred.cpu().numpy())
+            all_probs.extend(probs.cpu().numpy())
+            
+    # ------ 分类报告 ------
+    print("\n【论文指标】验证集统等精确指标与召回汇报库:")
+    print(classification_report(all_labels, all_preds, target_names=["Empty (0/空瓶)", "Liquid (1/有液体)"]))
+
+    # ------ 混淆矩阵 (Confusion Matrix) 绘制 ------
+    cm = confusion_matrix(all_labels, all_preds)
+    plt.figure(figsize=(6, 5))
+    sns.heatmap(cm, annot=True, fmt='d', cmap='Blues', xticklabels=["Empty", "Liquid"], yticklabels=["Empty", "Liquid"])
+    plt.xlabel('Predicted Label')
+    plt.ylabel('True Label')
+    plt.title('Confusion Matrix (Task2)')
+    cm_path = 'runs/task2/confusion_matrix.png'
+    plt.savefig(cm_path)
+    plt.close()
+
+    # ------ ROC及AUC 绘制 ------
+    fpr, tpr, _ = roc_curve(all_labels, all_probs)
+    roc_auc = auc(fpr, tpr)
+    plt.figure(figsize=(6, 5))
+    plt.plot(fpr, tpr, color='darkorange', lw=2, label=f'ROC curve (AUC = {roc_auc:.3f})')
+    plt.plot([0, 1], [0, 1], color='navy', lw=2, linestyle='--')
+    plt.xlim([0.0, 1.0])
+    plt.ylim([0.0, 1.05])
+    plt.xlabel('False Positive Rate')
+    plt.ylabel('True Positive Rate')
+    plt.title('Receiver Operating Characteristic (ROC)')
+    plt.legend(loc="lower right")
+    roc_path = 'runs/task2/roc_curve.png'
+    plt.savefig(roc_path)
+    plt.close()
+    
+    # ======== 2. 绘制 Grad-CAM 热力遮罩叠加分析图 ========
+    print("\n>>> 开始为若干验证集图片探寻判断因果并生成 Grad-CAM 热力图...")
+    model.train() # Grad-CAM由于需提取反向梯度反响所以要临时启反流抓取
+    
+    # 改为挂载在 ResNet18 的最后一层真正卷积特征上，而不是直接挂载在整个 CBAM 类上，使得梯度的纯粹性更强
+    target_layer = model.features[-1]
+    cam_extractor = GradCAM(model, target_layer)
     dataiter = iter(val_loader)
     images, labels = next(dataiter)
     images_gpu = images.to(device)
     
-    with torch.no_grad():
-        outputs = model(images_gpu)
-        _, preds = torch.max(outputs, 1)
+    fig = plt.figure(figsize=(16, 8)) # 增大画板面积，避免拥挤和标题重叠
+    for i in range(min(5, len(images))):
+        img_tensor = images_gpu[i:i+1] # 取得切片
+        img_label = labels[i].item()
         
-    fig = plt.figure(figsize=(12, 6))
-    for i in range(min(8, len(images))):
-        ax = fig.add_subplot(2, 4, i+1, xticks=[], yticks=[])
-        # 反归一化
-        img = images[i].numpy().transpose((1, 2, 0))
-        mean = np.array([0.485, 0.456, 0.406])
-        std = np.array([0.229, 0.224, 0.225])
-        img = std * img + mean
-        img = np.clip(img, 0, 1)
+        # 重新获取预测结果用于可视化标题
+        with torch.no_grad():
+            pred_out = model(img_tensor)
+            _, img_pred = torch.max(pred_out, 1)
+            img_pred = img_pred.item()
+            
+        # 考虑到 GradCAM 需要梯度
+        img_tensor.requires_grad_(True)
+        # 将张量送回给 Cam类要求打热量特征评分
+        cam_map = cam_extractor.generate(img_tensor)
         
-        ax.imshow(img)
-        pred_text = "Liquid" if preds[i].item() == 1 else "Empty"
-        true_text = "Liquid" if labels[i].item() == 1 else "Empty"
-        color = "green" if preds[i] == labels[i] else "red"
-        ax.set_title(f"Pred: {pred_text}\nTrue: {true_text}", color=color)
+        # 准备原格式图片并使用OpenCV作为着色剂背景图去拼合热力区
+        img_np = images[i].numpy().transpose((1, 2, 0))
+        mean, std = np.array([0.485, 0.456, 0.406]), np.array([0.229, 0.224, 0.225])
+        img_np = np.clip(std * img_np + mean, 0, 1)
         
-    plt.tight_layout()
-    viz_path = 'runs/task2/val_visualization.png'
-    plt.savefig(viz_path)
-    print(f"✅ 可视化结果已保存！你可以打开 {viz_path} 查看模型识别效果。")
+        # 将缩小或放大了的特质图拉伸重塑回去以适应 224x224 原图，增加 INTER_CUBIC 双三次插值消除马赛克方块感
+        cam_resize = cv2.resize(cam_map, (img_np.shape[1], img_np.shape[0]), interpolation=cv2.INTER_CUBIC)
+        heatmap = cv2.applyColorMap(np.uint8(255 * cam_resize), cv2.COLORMAP_JET)
+        heatmap = cv2.cvtColor(heatmap, cv2.COLOR_BGR2RGB) / 255.0
+        
+        # 增加阈值掩膜（Mask）：完全剔除低于 20% 重视度的低热量蓝色无效区域
+        mask = cam_resize > 0.2
+        mask = np.expand_dims(mask, axis=-1)
+
+        # 仅在有明显响应的高光区域叠加图层（40%红黄渐变），其他区域完全透过底层的高清未改变实景图
+        overlay = np.where(mask, 0.6 * img_np + 0.4 * heatmap, img_np)
+        
+        ax = fig.add_subplot(2, 5, i+1, xticks=[], yticks=[])
+        ax.imshow(img_np)
+        
+        # 按照预测对错设置标题颜色与内容 (包含 Pred 和 True)
+        pred_text = "Liquid" if img_pred == 1 else "Empty"
+        true_text = "Liquid" if img_label == 1 else "Empty"
+        color = "green" if img_pred == img_label else "red"
+        ax.set_title(f"Pred: {pred_text}\nTrue: {true_text}", color=color, pad=10)
+        
+        ax2 = fig.add_subplot(2, 5, i+6, xticks=[], yticks=[])
+        ax2.imshow(overlay)
+        ax2.set_title("Grad-CAM Focus", pad=10)
+        
+    plt.tight_layout(pad=3.0, h_pad=3.0, w_pad=2.0) # 增加各个子图和标题的间距
+    viz_path = 'runs/task2/gradcam_val_visualization.png'
+    plt.savefig(viz_path, dpi=300, bbox_inches='tight') # 满足论文要求，输出 300DPI 并且移除页面多余白边
+    plt.close()
+    
+    print(f"✅ 数学建模专用论证图表均已成功保存在 runs/task2/ 目录下。准备随时拿去排版论文：")
+    print(f" - [混淆矩阵用于证明无极端误判情况] {cm_path}")
+    print(f" - [ROC曲线与AUC用于提供坚实模型置信区间数学参考] {roc_path}")
+    print(f" - [GradCAM热点图用于直观展示模型“看见反光和液底”时的机理抓取有效性] {viz_path}")
 
 if __name__ == '__main__':
     main()
