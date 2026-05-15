@@ -28,7 +28,9 @@ def train_localization():
         device=device_id,
         single_cls=True,  # 核心参数：将 'empty', 'low', 'medium', 'high' 合为 1 个类
         project='runs/task3-1', 
-        name='bottle_localization' 
+        name='bottle_localization',
+        hsv_h=0.015,  # 增强色调
+        degrees=10.0   # 增强旋转
     )
     
     print("Task 3-1 训练结束。模型已经掌握在你特有数据集背景下寻找瓶体的能力。")
