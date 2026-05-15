@@ -28,10 +28,10 @@ def train_full_detection():
         device=device_id,
         single_cls=False,  # 保留 4 分类
         project='runs/task3-2', 
-        name='bottle_liquids_analysis' 
+        name='瓶子液体分析模型' 
     )
     
-    print("Task 3-2 训练结束。最佳产出模型通常保存在 runs/task3-2/bottle_liquids_analysis/weights/best.pt。")
+    print("Task 3-2 训练结束。最佳产出模型通常保存在 runs/task3-2/瓶子液体分析模型/weights/best.pt。")
     print("--------------------------------------------------")
     
     # ======== 新增：端到端推理测试可视化 ========
@@ -41,10 +41,10 @@ def train_full_detection():
         source='dataset/test/images',
         save=True,                       # 开启可视化并保存
         project='runs/task3-2',
-        name='test_results',
+        name='测试集结果',
         conf=0.25                        # 置信度阈值
     )
-    print("✅ 预测识别完毕！请打开 runs/task3-2/test_results 文件夹查看。")
+    print("✅ 预测识别完毕！请打开 runs/task3-2/测试集结果 文件夹查看。")
     print("图片中将会包含各瓶子的准确定位框，以及 Empty, Low, Medium, High 具体的类别和置信度概率值！")
 
 if __name__ == '__main__':

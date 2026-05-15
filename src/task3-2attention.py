@@ -70,18 +70,18 @@ def train_full_detection():
     # 包含本地数据集的多类别训练
     results = model.train(
         data='dataset/data.yaml',
-        epochs=40, 
+        epochs=30, 
         imgsz=640,
-        batch=32,
+        batch=20,
         device=device_id,
         single_cls=False,  # 保留 4 分类
         project='runs/task3-2', 
-        name='bottle_liquids_analysis' 
+        name='瓶子液体分析模型' 
     )
     
-    print("Task 3-2 训练结束。最佳产出模型通常保存在 runs/task3-2/bottle_liquids_analysis/weights/best.pt。")
+    print("Task 3-2 训练结束。最佳产出模型通常保存在 runs/task3-2/瓶子液体分析模型/weights/best.pt。")
     print("✅ 为了方便数学建模写论文，YOLO 已自动输出评估指标：")
-    print("  - 请前往 runs/task3-2/bottle_liquids_analysis/ 提取您的多分类混淆矩阵 (confusion_matrix.png)")
+    print("  - 请前往 runs/task3-2/瓶子液体分析模型/ 提取您的多分类混淆矩阵 (confusion_matrix.png)")
     print("  - 各类别的 F1 分数与 P-R 验证曲线 (F1_curve.png, PR_curve.png) ")
     print("--------------------------------------------------")
     
@@ -92,10 +92,10 @@ def train_full_detection():
         source='dataset/test/images',
         save=True,                       # 开启可视化并保存
         project='runs/task3-2',
-        name='test_results',
+        name='测试集结果',
         conf=0.25                        # 置信度阈值
     )
-    print("✅ 预测识别完毕！请打开 runs/task3-2/test_results 文件夹查看。")
+    print("✅ 预测识别完毕！请打开 runs/task3-2/测试集结果 文件夹查看。")
     print("图片中将会包含各瓶子的准确定位框，以及 Empty, Low, Medium, High 具体的类别和置信度概率值！")
 
 if __name__ == '__main__':

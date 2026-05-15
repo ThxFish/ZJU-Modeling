@@ -73,17 +73,17 @@ def train_localization():
         data='dataset/data.yaml',
         epochs=30,  # 这里的 epochs 可以根据数据集大小调整
         imgsz=640,
-        batch=16,
+        batch=20,
         device=device_id,
         single_cls=True,  # 核心参数：将 'empty', 'low', 'medium', 'high' 合为 1 个类
         project='runs/task3-1', 
-        name='bottle_localization',
+        name='瓶子定位模型',
         hsv_h=0.015,  # 增强色调
         degrees=10.0   # 增强旋转
     )
     
     print("Task 3-1 训练结束。模型已经掌握在你特有数据集背景下寻找瓶体的能力。")
-    print("✅ YOLO 已自动为您在 runs/task3-1/bottle_localization 下生成了：")
+    print("✅ YOLO 已自动为您在 runs/task3-1/瓶子定位模型 下生成了：")
     print("  - 混淆矩阵 (confusion_matrix.png)")
     print("  - 包含 F1-Score 的 P-R 曲线 (PR_curve.png)")
     print("  - 这些学术图表可以直接放入数学建模论文中！")
@@ -96,10 +96,10 @@ def train_localization():
         source='dataset/test/images',   # 直接加载测试集文件夹
         save=True,                      # 保存成画好定位框的图片
         project='runs/task3-1',
-        name='test_results',
+        name='测试集结果',
         conf=0.25                       # 只画置信度>0.25的框
     )
-    print("✅ 测试画面绘制完毕！你可以直接打开 runs/task3-1/test_results 文件夹，查看所有标注了矩形框的测试原图。")
+    print("✅ 测试画面绘制完毕！你可以直接打开 runs/task3-1/测试集结果 文件夹，查看所有标注了矩形框的测试原图。")
 
 if __name__ == '__main__':
     train_localization()

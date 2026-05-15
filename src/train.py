@@ -41,8 +41,8 @@ def train_task3_yolo():
         imgsz=640,
         batch=16,
         device=0 if torch.cuda.is_available() else 'cpu',
-        project='runs/train',       # 显式指定保存位置
-        name='yolov8_bottle_detection' 
+        project='runs/task3-2',       # 显式指定保存位置
+        name='yolov8_瓶子检测' 
     )
     return model
 
@@ -52,8 +52,8 @@ def test_task3_yolo():
     """
     print("正在加载训练好的模型进行评估...")
     # 注意：这里的模型路径根据实际训练产出的 best.pt 路径进行修改
-    # 默认路径通常为 runs/train/yolov8_bottle_detection/weights/best.pt
-    model = YOLO('runs/train/yolov8_bottle_detection/weights/best.pt')
+    # 默认路径通常为 runs/task3-2/yolov8_瓶子检测/weights/best.pt
+    model = YOLO('runs/task3-2/yolov8_瓶子检测/weights/best.pt')
     
     # 1. 在测试集上评估指标 (mAP等)
     metrics = model.val(data='dataset/data.yaml', split='test')
@@ -61,8 +61,8 @@ def test_task3_yolo():
     
     # 2. 对测试集中的几张图片进行推理预测并保存结果可视化图片
     print("正在对单张/多张图片进行推理测试...")
-    results = model.predict(source='dataset/test/images', save=True, project='runs/detect', name='test_results')
-    print("测试完成，预测结果图片已保存在 runs/detect/test_results 文件夹内。")
+    results = model.predict(source='dataset/test/images', save=True, project='runs/task3-2', name='测试集结果')
+    print("测试完成，预测结果图片已保存在 runs/task3-2/测试集结果 文件夹内。")
 
 def test_bottle_localization_only():
     """
@@ -80,10 +80,10 @@ def test_bottle_localization_only():
         source='dataset/test/images', 
         classes=[39],   # 仅检测瓶子
         save=True, 
-        project='runs/detect', 
-        name='localization_only_results'
+        project='runs/task3-1', 
+        name='瓶子定位结果'
     )
-    print("瓶子定位置信度及边界框测试完成，结果已保存在 runs/detect/localization_only_results 文件夹内。")
+    print("瓶子定位置信度及边界框测试完成，结果已保存在 runs/task3-1/瓶子定位结果 文件夹内。")
 
 def main():
     print("====== 建模竞赛 A 题演示代码 ======")

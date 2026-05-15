@@ -28,7 +28,7 @@ def train_localization():
         device=device_id,
         single_cls=True,  # 核心参数：将 'empty', 'low', 'medium', 'high' 合为 1 个类
         project='runs/task3-1', 
-        name='bottle_localization',
+        name='瓶子定位模型',
         hsv_h=0.015,  # 增强色调
         degrees=10.0   # 增强旋转
     )
@@ -43,10 +43,10 @@ def train_localization():
         source='dataset/test/images',   # 直接加载测试集文件夹
         save=True,                      # 保存成画好定位框的图片
         project='runs/task3-1',
-        name='test_results',
+        name='测试集结果',
         conf=0.25                       # 只画置信度>0.25的框
     )
-    print("✅ 测试画面绘制完毕！你可以直接打开 runs/task3-1/test_results 文件夹，查看所有标注了矩形框的测试原图。")
+    print("✅ 测试画面绘制完毕！你可以直接打开 runs/task3-1/测试集结果 文件夹，查看所有标注了矩形框的测试原图。")
 
 if __name__ == '__main__':
     train_localization()

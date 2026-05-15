@@ -167,7 +167,7 @@ def main():
         print(f"Epoch [{epoch+1}/{epochs}] | Loss: {running_loss/len(train_loader):.4f} | Train Acc: {train_acc:.2f}% | Val Acc: {val_acc:.2f}%")
     
     os.makedirs('runs/task2', exist_ok=True)
-    save_path = 'runs/task2/resnet18_binary.pth'
+    save_path = 'runs/task2/resnet18_二分类权重.pth'
     torch.save(model.state_dict(), save_path)
     print(f"训练完成！包含本地数据学习特征的权重已保存至: {save_path}")
     
@@ -199,7 +199,7 @@ def main():
         ax.set_title(f"Pred: {pred_text}\nTrue: {true_text}", color=color)
         
     plt.tight_layout()
-    viz_path = 'runs/task2/val_visualization.png'
+    viz_path = 'runs/task2/验证集可视化结果.png'
     plt.savefig(viz_path)
     print(f"✅ 可视化结果已保存！你可以打开 {viz_path} 查看模型识别效果。")
 

@@ -237,7 +237,7 @@ def main():
     criterion = nn.CrossEntropyLoss()
     optimizer = optim.Adam(model.parameters(), lr=1e-4)
     
-    epochs = 10
+    epochs = 20
     print(f"开始使用 {device} 训练ResNet18，总轮次：{epochs}")
     for epoch in range(epochs):
         model.train()
@@ -276,9 +276,13 @@ def main():
         print(f"Epoch [{epoch+1}/{epochs}] | Loss: {running_loss/len(train_loader):.4f} | Train Acc: {train_acc:.2f}% | Val Acc: {val_acc:.2f}%")
     
     os.makedirs('runs/task2', exist_ok=True)
-    save_path = 'runs/task2/resnet18_binary.pth'
+    save_path = 'runs/task2/resnet18_二分类权重.pth'
     torch.save(model.state_dict(), save_path)
     print(f"训练完成！包含本地数据学习特征的权重已保存至: {save_path}")
+    
+    # 设置 matplotlib 支持中文显示和负号正常显示
+    plt.rcParams['font.sans-serif'] = ['SimHei', 'Microsoft YaHei', 'Arial Unicode MS']
+    plt.rcParams['axes.unicode_minus'] = False
     
     # ======== 1. 验证集全面综合评价：分类报告、混淆矩阵、ROC/AUC ========
     print("\n>>> 开始在验证集上计算评价指标 (Confusion Matrix, ROC Curve, AUC)...")
@@ -304,11 +308,11 @@ def main():
     # ------ 混淆矩阵 (Confusion Matrix) 绘制 ------
     cm = confusion_matrix(all_labels, all_preds)
     plt.figure(figsize=(6, 5))
-    sns.heatmap(cm, annot=True, fmt='d', cmap='Blues', xticklabels=["Empty", "Liquid"], yticklabels=["Empty", "Liquid"])
-    plt.xlabel('Predicted Label')
-    plt.ylabel('True Label')
-    plt.title('Confusion Matrix (Task2)')
-    cm_path = 'runs/task2/confusion_matrix.png'
+    sns.heatmap(cm, annot=True, fmt='d', cmap='Blues', xticklabels=["空瓶", "有液体"], yticklabels=["空瓶", "有液体"])
+    plt.xlabel('预测标签')
+    plt.ylabel('真实标签')
+    plt.title('混淆矩阵 (Task2)')
+    cm_path = 'runs/task2/混淆矩阵.png'
     plt.savefig(cm_path)
     plt.close()
 
@@ -316,15 +320,15 @@ def main():
     fpr, tpr, _ = roc_curve(all_labels, all_probs)
     roc_auc = auc(fpr, tpr)
     plt.figure(figsize=(6, 5))
-    plt.plot(fpr, tpr, color='darkorange', lw=2, label=f'ROC curve (AUC = {roc_auc:.3f})')
+    plt.plot(fpr, tpr, color='darkorange', lw=2, label=f'ROC曲线 (AUC = {roc_auc:.3f})')
     plt.plot([0, 1], [0, 1], color='navy', lw=2, linestyle='--')
     plt.xlim([0.0, 1.0])
     plt.ylim([0.0, 1.05])
-    plt.xlabel('False Positive Rate')
-    plt.ylabel('True Positive Rate')
-    plt.title('Receiver Operating Characteristic (ROC)')
+    plt.xlabel('假正率 (False Positive Rate)')
+    plt.ylabel('真正率 (True Positive Rate)')
+    plt.title('受试者工作特征曲线 (ROC)')
     plt.legend(loc="lower right")
-    roc_path = 'runs/task2/roc_curve.png'
+    roc_path = 'runs/task2/ROC曲线.png'
     plt.savefig(roc_path)
     plt.close()
     
@@ -335,12 +339,18 @@ def main():
     # 改为挂载在 ResNet18 的最后一层真正卷积特征上，而不是直接挂载在整个 CBAM 类上，使得梯度的纯粹性更强
     target_layer = model.features[-1]
     cam_extractor = GradCAM(model, target_layer)
-    dataiter = iter(val_loader)
+    
+    # 【修改点 1】为了使得每次画图都能随机抽验证集，临时创建一个 shuffle=True 的 DataLoader
+    random_val_loader = DataLoader(val_dataset, batch_size=32, shuffle=True)
+    dataiter = iter(random_val_loader)
     images, labels = next(dataiter)
     images_gpu = images.to(device)
     
-    fig = plt.figure(figsize=(16, 8)) # 增大画板面积，避免拥挤和标题重叠
-    for i in range(min(5, len(images))):
+    # 【修改点 2】更改画布比例为 2行 x 4列，共 8 张图片
+    fig = plt.figure(figsize=(16, 9)) 
+    
+    # 【修改点 3】增加抓取数量上限至 8 
+    for i in range(min(6, len(images))):
         img_tensor = images_gpu[i:i+1] # 取得切片
         img_label = labels[i].item()
         
@@ -372,21 +382,24 @@ def main():
         # 仅在有明显响应的高光区域叠加图层（40%红黄渐变），其他区域完全透过底层的高清未改变实景图
         overlay = np.where(mask, 0.6 * img_np + 0.4 * heatmap, img_np)
         
-        ax = fig.add_subplot(2, 5, i+1, xticks=[], yticks=[])
+        # 【修改点 4】更改坐标轴矩阵分配为 2x4
+        # 第一排原图
+        ax = fig.add_subplot(2, 8, i+1, xticks=[], yticks=[])
         ax.imshow(img_np)
         
         # 按照预测对错设置标题颜色与内容 (包含 Pred 和 True)
-        pred_text = "Liquid" if img_pred == 1 else "Empty"
-        true_text = "Liquid" if img_label == 1 else "Empty"
+        pred_text = "有液体" if img_pred == 1 else "空瓶"
+        true_text = "有液体" if img_label == 1 else "空瓶"
         color = "green" if img_pred == img_label else "red"
-        ax.set_title(f"Pred: {pred_text}\nTrue: {true_text}", color=color, pad=10)
+        ax.set_title(f"预测: {pred_text}\n真实: {true_text}", color=color, pad=10)
         
-        ax2 = fig.add_subplot(2, 5, i+6, xticks=[], yticks=[])
+        # 第二排热力图
+        ax2 = fig.add_subplot(2, 8, i+9, xticks=[], yticks=[])
         ax2.imshow(overlay)
-        ax2.set_title("Grad-CAM Focus", pad=10)
+        ax2.set_title("Grad-CAM 焦点区", pad=10)
         
     plt.tight_layout(pad=3.0, h_pad=3.0, w_pad=2.0) # 增加各个子图和标题的间距
-    viz_path = 'runs/task2/gradcam_val_visualization.png'
+    viz_path = 'runs/task2/验证集GradCAM可视化结果.png'
     plt.savefig(viz_path, dpi=300, bbox_inches='tight') # 满足论文要求，输出 300DPI 并且移除页面多余白边
     plt.close()
     
