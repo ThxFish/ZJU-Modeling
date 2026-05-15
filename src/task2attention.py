@@ -203,7 +203,8 @@ def main():
         transforms.RandomRotation(degrees=15),
         transforms.ToTensor(),
         transforms.Normalize(mean=[0.485, 0.456, 0.406],
-                             std=[0.229, 0.224, 0.225])
+                             std=[0.229, 0.224, 0.225]),
+        transforms.RandomErasing(p=0.2, scale=(0.02, 0.1), value=0, inplace=False) # 新增: 随机擦除对抗遮挡
     ])
     
     # 验证/测试集特有：绝对不能包含随机增强，必须原图直出（仅做缩放和归一化）
@@ -234,10 +235,15 @@ def main():
         
     model = build_binary_classifier().to(device)
     
-    criterion = nn.CrossEntropyLoss()
-    optimizer = optim.Adam(model.parameters(), lr=1e-4)
+    criterion = nn.CrossEntropyLoss(label_smoothing=0.1) # 修改: 加入标签平滑
+    optimizer = optim.Adam(model.parameters(), lr=1e-4, weight_decay=1e-5) # 修改: 加入L2正则化
     
     epochs = 20
+    scheduler = optim.lr_scheduler.CosineAnnealingLR(optimizer, T_max=epochs) # 新增: 余弦退火学习率调度器
+    best_val_acc = 0.0 # 新增: 跟踪最佳准确率
+    save_path = 'runs/task2/resnet18_二分类权重.pth'
+    os.makedirs('runs/task2', exist_ok=True)
+    
     print(f"开始使用 {device} 训练ResNet18，总轮次：{epochs}")
     for epoch in range(epochs):
         model.train()
@@ -273,12 +279,20 @@ def main():
                 val_correct += v_pred.eq(v_labels).sum().item()
         
         val_acc = 100. * val_correct / val_total
-        print(f"Epoch [{epoch+1}/{epochs}] | Loss: {running_loss/len(train_loader):.4f} | Train Acc: {train_acc:.2f}% | Val Acc: {val_acc:.2f}%")
+        curr_lr = scheduler.get_last_lr()[0]
+        print(f"Epoch [{epoch+1}/{epochs}] | LR: {curr_lr:.6f} | Loss: {running_loss/len(train_loader):.4f} | Train Acc: {train_acc:.2f}% | Val Acc: {val_acc:.2f}%")
+        
+        scheduler.step() # 步进更新学习率
+        
+        # 保存最佳模型
+        if val_acc >= best_val_acc:
+            best_val_acc = val_acc
+            torch.save(model.state_dict(), save_path)
     
-    os.makedirs('runs/task2', exist_ok=True)
-    save_path = 'runs/task2/resnet18_二分类权重.pth'
-    torch.save(model.state_dict(), save_path)
-    print(f"训练完成！包含本地数据学习特征的权重已保存至: {save_path}")
+    print(f"训练完成！最佳验证集准确率为: {best_val_acc:.2f}%。包含本地数据学习特征的权重已保存至: {save_path}")
+    
+    # 在计算指标和绘图之前，确保我们加载的是这 20 轮里面准确率最高的一轮模型，而不是最终可能过拟合的模型
+    model.load_state_dict(torch.load(save_path))
     
     # 设置 matplotlib 支持中文显示和负号正常显示
     plt.rcParams['font.sans-serif'] = ['SimHei', 'Microsoft YaHei', 'Arial Unicode MS']
